@@ -94,7 +94,7 @@ docker run --gpus all --rm --network host remote-desktop-client
 또는 실행 스크립트 사용:
 
 ```bash
-./run_test.sh
+./run_client.sh
 ```
 
 **참고:**
@@ -162,7 +162,7 @@ http://localhost:8000/client.html
 - **`Dockerfile.server`**: 서버 Docker 이미지 빌드 파일
 - **`Dockerfile.client`**: 클라이언트 Docker 이미지 빌드 파일
 - **`run_server.sh`**: 서버 실행 스크립트
-- **`run_test.sh`**: 클라이언트 실행 스크립트
+- **`run_client.sh`**: 클라이언트 실행 스크립트
 
 ### 데이터 흐름
 

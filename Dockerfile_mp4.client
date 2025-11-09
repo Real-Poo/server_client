@@ -1,0 +1,34 @@
+# Use Python base image for testing
+FROM python:3.9-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    python3-pip \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+RUN pip3 install websockets numpy torch torchvision opencv-python-headless
+
+# Create a directory for the application
+WORKDIR /app
+
+# Copy the client script and decoder model
+COPY client_save_mp4.py .
+COPY decoder_model.py .
+
+# Create appuser account
+RUN useradd -m -s /bin/bash appuser && \
+    chown -R appuser:appuser /app
+
+# Create output directory for videos
+RUN mkdir -p /app/output && \
+    chown -R appuser:appuser /app/output
+
+# Switch to appuser
+USER appuser
+
+# Command to run the mp4 saving client
+CMD ["python3", "client_save_mp4.py"]
+
