@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
-RUN pip3 install websockets numpy torch torchvision opencv-python-headless
+RUN pip3 install websockets numpy torch torchvision opencv-python
 
 # Create a directory for the application
 WORKDIR /app
