@@ -13,7 +13,7 @@ RUN pip3 install websockets numpy torch torchvision
 WORKDIR /app
 
 # Copy the test client script and decoder model
-COPY test_client.py .
+COPY client.py .
 COPY decoder_model.py .
 
 # Create appuser account
