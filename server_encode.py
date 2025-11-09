@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 
 import asyncio
 import websockets
@@ -7,6 +8,7 @@ import torch.nn as nn
 import zlib
 import json
 import subprocess
+import time
 
 # --- Configuration ---
 WIDTH, HEIGHT = 1280, 720
@@ -35,26 +37,29 @@ class Encoder(nn.Module):
         return self.conv_stack(x)
 
 def get_latent_shape(original_w, original_h):
-    # Calculate the output shape after the convolutional layers
     w = original_w
     h = original_h
-    for _ in range(4): # 4 convolutional layers with stride 2
+    for _ in range(4):
         w = (w - 5 + 2 * 2) // 2 + 1
         h = (h - 5 + 2 * 2) // 2 + 1
     return w, h
 
 # --- Main Server Logic ---
 async def server(websocket, path):
-    print("Client connected.")
+    print("✅ 클라이언트 연결됨")
 
     # Initialize the encoder
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device}")
+    print(f"🔧 사용 중인 디바이스: {device}")
     model = Encoder(WIDTH, HEIGHT).to(device)
     model.eval()
 
     latent_w, latent_h = get_latent_shape(WIDTH, HEIGHT)
+    print(f"📐 Latent 크기: {latent_w}x{latent_h}x{model.c}")
 
+    # Check Xvfb status
+    print(f"🖥️ 디스플레이 확인: {DISPLAY}")
+    
     # Start ffmpeg to capture the screen
     ffmpeg_cmd = [
         'ffmpeg',
@@ -65,20 +70,43 @@ async def server(websocket, path):
         '-f', 'rawvideo',
         'pipe:1'
     ]
-
-    proc = await asyncio.create_subprocess_exec(
-        *ffmpeg_cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE
-    )
-
+    
+    print(f"🎬 FFmpeg 명령어: {' '.join(ffmpeg_cmd)}")
+    
     try:
+        proc = await asyncio.create_subprocess_exec(
+            *ffmpeg_cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        
+        print("📹 FFmpeg 프로세스 시작됨")
+        
+        frame_count = 0
+        start_time = time.time()
+        
         while True:
-            # Read a frame from ffmpeg's stdout
-            frame_bytes = await proc.stdout.read(WIDTH * HEIGHT * 3)
-            if not frame_bytes:
-                print("FFmpeg process stopped.")
+            # Read exactly one frame from ffmpeg's stdout
+            frame_size = WIDTH * HEIGHT * 3
+            frame_bytes = b''
+            
+            # Read frame_size bytes exactly
+            while len(frame_bytes) < frame_size:
+                chunk = await proc.stdout.read(frame_size - len(frame_bytes))
+                if not chunk:
+                    print("❌ FFmpeg 프로세스가 중단됨")
+                    # Check stderr for error messages
+                    stderr_output = await proc.stderr.read()
+                    if stderr_output:
+                        print(f"FFmpeg 오류: {stderr_output.decode()}")
+                    break
+                frame_bytes += chunk
+            
+            if len(frame_bytes) != frame_size:
+                print(f"❌ 프레임 크기 불일치: {len(frame_bytes)} != {frame_size}")
                 break
+
+            print(f"📊 프레임 #{frame_count + 1} 수신됨 ({len(frame_bytes)} bytes)")
 
             # Convert frame to tensor
             frame = np.frombuffer(frame_bytes, dtype=np.uint8).reshape((HEIGHT, WIDTH, 3))
@@ -102,24 +130,32 @@ async def server(websocket, path):
                 "model_ver": 1,
                 "orig_w": WIDTH,
                 "orig_h": HEIGHT,
-                "timestamp": asyncio.get_event_loop().time()
+                "timestamp": time.time()
             }
             header_bytes = json.dumps(header).encode('utf-8')
             header_len_bytes = len(header_bytes).to_bytes(4, 'big')
 
             # Send data
             await websocket.send(header_len_bytes + header_bytes + compressed_latent)
+            
+            frame_count += 1
+            if frame_count % 30 == 0:
+                elapsed = time.time() - start_time
+                fps = frame_count / elapsed
+                print(f"📊 프레임 #{frame_count} | FPS: {fps:.1f}")
 
     except websockets.exceptions.ConnectionClosed:
-        print("Client disconnected.")
+        print("❌ 클라이언트 연결 끊어짐")
+    except Exception as e:
+        print(f"❌ 오류 발생: {e}")
     finally:
-        proc.terminate()
-        await proc.wait()
-
+        if 'proc' in locals():
+            proc.terminate()
+            await proc.wait()
 
 if __name__ == "__main__":
+    print(f"🚀 WebSocket 서버 시작 중... 포트: {WEBSOCKET_PORT}")
     start_server = websockets.serve(server, "0.0.0.0", WEBSOCKET_PORT)
-
     asyncio.get_event_loop().run_until_complete(start_server)
-    print(f"WebSocket server started on port {WEBSOCKET_PORT}.")
+    print(f"✅ 서버가 포트 {WEBSOCKET_PORT}에서 실행 중입니다.")
     asyncio.get_event_loop().run_forever()
