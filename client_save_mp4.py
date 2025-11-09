@@ -93,7 +93,7 @@ async def save_mp4_client():
                     if video_writer is None:
                         # 실제 디코딩된 이미지 크기 사용
                         video_height, video_width = img_bgr.shape[:2]
-                        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+                        fourcc = cv2.VideoWriter_fourcc(*'avc1')
                         video_writer = cv2.VideoWriter(
                             output_filename,
                             fourcc,
