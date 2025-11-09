@@ -117,7 +117,7 @@ async def server(websocket, path):
                 latent = model(frame_tensor)
 
             # Quantize and compress
-            scale = latent.abs().max() / 127.0
+            scale = latent.abs().max() / 127.0 + 1e-9
             quantized_latent = (latent / scale).clamp(-128, 127).to(torch.int8)
             compressed_latent = zlib.compress(quantized_latent.cpu().numpy().tobytes())
 
