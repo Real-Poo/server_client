@@ -89,6 +89,8 @@ async def save_mp4_client():
                     # RGB를 BGR로 변환 (OpenCV 형식)
                     img_bgr = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
                     
+                    print("img_bgr.shape:", img_bgr.shape, "dtype:", img_bgr.dtype)
+
                     # VideoWriter 초기화 (첫 프레임에서만)
                     if video_writer is None:
                         # 실제 디코딩된 이미지 크기 사용
