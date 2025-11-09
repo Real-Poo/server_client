@@ -9,11 +9,13 @@ import zlib
 import json
 import subprocess
 import time
+import os
 
 # --- Configuration ---
 WIDTH, HEIGHT = 1280, 720
 DISPLAY = ":1"
 WEBSOCKET_PORT = 8765
+ENCODER_PATH = "models/encoder.pth"
 
 # --- Simple CNN Encoder (Demo) ---
 class Encoder(nn.Module):
@@ -48,10 +50,18 @@ def get_latent_shape(original_w, original_h):
 async def server(websocket, path):
     print("✅ 클라이언트 연결됨")
 
-    # Initialize the encoder
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"🔧 사용 중인 디바이스: {device}")
-    model = Encoder(WIDTH, HEIGHT).to(device)
+
+    model = Encoder(WIDTH, HEIGHT, c=64).to(device)
+
+    if os.path.exists(ENCODER_PATH):
+        print(f"📦 학습된 인코더 weight 로드: {ENCODER_PATH}")
+        state_dict = torch.load(ENCODER_PATH, map_location=device)
+        model.load_state_dict(state_dict)
+    else:
+        print(f"⚠️ {ENCODER_PATH} 를 찾을 수 없습니다. 랜덤 초기화 인코더 사용!")
+
     model.eval()
 
     latent_w, latent_h = get_latent_shape(WIDTH, HEIGHT)
@@ -109,33 +119,35 @@ async def server(websocket, path):
             print(f"📊 프레임 #{frame_count + 1} 수신됨 ({len(frame_bytes)} bytes)")
 
             # Convert frame to tensor
+            # 프레임 → 텐서
             frame = np.frombuffer(frame_bytes, dtype=np.uint8).reshape((HEIGHT, WIDTH, 3))
             frame_tensor = torch.from_numpy(frame).permute(2, 0, 1).unsqueeze(0).float().to(device) / 255.0
 
-            # Encode the frame
             with torch.no_grad():
-                latent = model(frame_tensor)
+                latent = model(frame_tensor)   # (1, C, H', W')
 
-            # Quantize and compress
+            # 실제 latent 크기
+            _, c, h, w = latent.shape
+
+            # 양자화 (train.py와 동일한 방식)
             scale = latent.abs().max() / 127.0 + 1e-9
             quantized_latent = (latent / scale).clamp(-128, 127).to(torch.int8)
             compressed_latent = zlib.compress(quantized_latent.cpu().numpy().tobytes())
 
-            # Prepare header
             header = {
-                "w": latent_w,
-                "h": latent_h,
-                "c": model.c,
+                "w": w,
+                "h": h,
+                "c": c,
                 "scale": scale.item(),
                 "model_ver": 1,
                 "orig_w": WIDTH,
                 "orig_h": HEIGHT,
-                "timestamp": time.time()
+                "timestamp": time.time(),
             }
-            header_bytes = json.dumps(header).encode('utf-8')
-            header_len_bytes = len(header_bytes).to_bytes(4, 'big')
+            header_bytes = json.dumps(header).encode("utf-8")
+            header_len_bytes = len(header_bytes).to_bytes(4, "big")
 
-            # Send data
+            #Send Data
             await websocket.send(header_len_bytes + header_bytes + compressed_latent)
             
             frame_count += 1

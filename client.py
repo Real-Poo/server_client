@@ -5,6 +5,7 @@ import websockets
 import json
 import zlib
 import time
+import os
 import numpy as np
 import torch
 import torch.nn as nn
@@ -13,6 +14,7 @@ import torch.nn as nn
 from decoder_model import Decoder
 
 SERVER_URI = "ws://localhost:8765"
+DECODER_PATH = "models/decoder.pth"
 
 async def test_client():
     try:
@@ -22,8 +24,18 @@ async def test_client():
         
         # Load decoder model
         model = Decoder(c=64).to(device)
+        
+        # Load trained weights if available
+        if os.path.exists(DECODER_PATH):
+            try:
+                model.load_state_dict(torch.load(DECODER_PATH, map_location=device))
+                print(f"📦 사전 학습된 디코더 모델 로드 완료: {DECODER_PATH}")
+            except Exception as e:
+                print(f"⚠️ 디코더 모델 로드 실패: {e}. 새로운 모델을 사용합니다.")
+        else:
+            print(f"⚠️ 사전 학습된 디코더 모델을 찾을 수 없습니다: {DECODER_PATH}. 새로운 모델을 사용합니다.")
+            
         model.eval()
-        print("📦 디코더 모델 로드 완료")
         
         async with websockets.connect(SERVER_URI, max_size=1_000_000) as websocket:
             print(f"✅ 서버에 연결됨: {SERVER_URI}")

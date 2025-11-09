@@ -7,12 +7,14 @@ import zlib
 import json
 import cv2
 import time
+import os
 
 # Import the Decoder class from the model file
 from decoder_model import Decoder
 
 # --- Configuration ---
 SERVER_URI = "ws://localhost:8765"
+DECODER_PATH = "models/decoder.pth"
 
 # --- Main Client Logic ---
 async def client():
@@ -20,12 +22,19 @@ async def client():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
     
-    # In a real application, you would load a trained model.
-    # For this demo, we instantiate a new decoder.
-    # e.g., model.load_state_dict(torch.load('decoder_weights.pth'))
     model = Decoder(c=64).to(device)
+    
+    # Load trained weights if available
+    if os.path.exists(DECODER_PATH):
+        try:
+            model.load_state_dict(torch.load(DECODER_PATH, map_location=device))
+            print(f"📦 사전 학습된 디코더 모델 로드 완료: {DECODER_PATH}")
+        except Exception as e:
+            print(f"⚠️ 디코더 모델 로드 실패: {e}. 새로운 모델을 사용합니다.")
+    else:
+        print(f"⚠️ 사전 학습된 디코더 모델을 찾을 수 없습니다: {DECODER_PATH}. 새로운 모델을 사용합니다.")
+
     model.eval()
-    print("Decoder model loaded.")
 
     # --- 2. Performance Tracking ---
     frame_count = 0

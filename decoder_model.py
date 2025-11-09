@@ -27,6 +27,11 @@ if __name__ == '__main__':
 
     # 1. Instantiate the model
     decoder = Decoder(c=64)
+
+    ###학습을 했다면 
+    # decoder = Decoder(c=64).to(device)
+    # state_dict = torch.load("decoder.pth", map_location=device)
+    # model.load_state_dict(state_dict)
     decoder.eval()
 
     # 2. Create a dummy input with the correct shape (batch_size, channels, height, width)
