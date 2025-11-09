@@ -44,7 +44,7 @@ async def save_mp4_client():
             decode_times = []
             
             # 출력 파일명 생성 (타임스탬프 포함)
-            output_dir = "output"
+            output_dir = "/app/output"
             os.makedirs(output_dir, exist_ok=True)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             output_filename = os.path.join(output_dir, f"output_{timestamp}.avi")
