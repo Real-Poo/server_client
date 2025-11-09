@@ -91,6 +91,14 @@ async def save_mp4_client():
                     
                     print("img_bgr.shape:", img_bgr.shape, "dtype:", img_bgr.dtype)
 
+                    try:
+                        os.makedirs(os.path.dirname(output_filename), exist_ok=True)
+                        with open(output_filename, "wb") as f:
+                            pass
+                        print("✅ 파일 경로/권한 OK (Python에서 직접 열 수 있음)")
+                    except Exception as e:
+                        print(f"❌ 파일 경로/권한 문제: {e}")
+
                     # VideoWriter 초기화 (첫 프레임에서만)
                     if video_writer is None:
                         # 실제 디코딩된 이미지 크기 사용
