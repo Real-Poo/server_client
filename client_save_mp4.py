@@ -47,7 +47,7 @@ async def save_mp4_client():
             output_dir = "/app/output"
             os.makedirs(output_dir, exist_ok=True)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_filename = os.path.join(output_dir, f"output_{timestamp}.mp4")
+            output_filename = os.path.join(output_dir, f"output_{timestamp}.avi")
             
             print(f"🎬 영상 녹화 시작 (20초간 저장) - 출력 파일: {output_filename}")
             
@@ -91,19 +91,13 @@ async def save_mp4_client():
                     
                     print("img_bgr.shape:", img_bgr.shape, "dtype:", img_bgr.dtype)
 
-                    try:
-                        os.makedirs(os.path.dirname(output_filename), exist_ok=True)
-                        with open(output_filename, "wb") as f:
-                            pass
-                        print("✅ 파일 경로/권한 OK (Python에서 직접 열 수 있음)")
-                    except Exception as e:
-                        print(f"❌ 파일 경로/권한 문제: {e}")
+            
 
                     # VideoWriter 초기화 (첫 프레임에서만)
                     if video_writer is None:
                         # 실제 디코딩된 이미지 크기 사용
                         video_height, video_width = img_bgr.shape[:2]
-                        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+                        fourcc = cv2.VideoWriter_fourcc(*'XVID')
                         video_writer = cv2.VideoWriter(
                             output_filename,
                             fourcc,
