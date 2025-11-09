@@ -88,6 +88,10 @@ async def save_mp4_client():
                     img_rgb = (np.clip(img_np, 0, 1) * 255).astype(np.uint8)
                     # RGB를 BGR로 변환 (OpenCV 형식)
                     img_bgr = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
+
+                    # 테스트용 파란 화면
+                    img_bgr[:] = (255, 0, 0)  # 파란 화면 (BGR)
+
                     
                     # print("img_bgr.shape:", img_bgr.shape, "dtype:", img_bgr.dtype)
 
